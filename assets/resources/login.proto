@@ -1,0 +1,44 @@
+// syntax = "proto3";
+
+// package com.yixia;
+
+// message Login{
+//     string cmd = 1;
+//     string name = 2;
+//     string pw = 3;
+// }
+
+syntax = "proto3";
+package com.yixia;
+
+message Info{
+    string name = 1;
+    string passwd = 2;
+}
+
+// // 1.第一种方式，使用类似json方式定义对象
+var cfg = {
+    moveSpeed: 10,
+    version: "0.15",
+    showTutorial: true,
+
+    // load: function () {
+    //     // ...
+    // }
+};
+cfg.load();
+
+// // module.exports = cfg;
+
+// // 2.使用class方式定义
+
+// class Configure{
+//     constructor(){
+//         this.prop1 = 'hhhhhhhhhhhhhh';
+//     }
+//     fun1(a,b){
+//         console.log('a='+a+'b='+b);
+//     }
+// }
+
+// module.exports.configureObj = new Configure();
