@@ -1,5 +1,5 @@
-import { networkInterfaces } from "os";
-import { POINT_CONVERSION_HYBRID } from "constants";
+// import { networkInterfaces } from "os";
+// import { POINT_CONVERSION_HYBRID } from "constants";
 
 // 3. 网络模块
 // 支持监听任务
@@ -131,7 +131,9 @@ class RequestParamService{
     }
 
     initAuthParam(openId,gameId,userId){
-        return {openId:openId,gameId:gameId,userId:userId};
+        
+        var param = {openId:openId,gameId:gameId,userId:userId};
+        return JSON.stringify(param);
     }
 
 
@@ -144,7 +146,19 @@ module.exports.requestParamService = new RequestParamService();
  * 3.响应参数类
  */
 class ResponseService{
+    constructor(){
 
+    }
+    initAuthResponse(responseData){
+        return this._parseResonseDataToJSON(responseData);
+    }
+
+    _parseResonseDataToJSON(responseData){
+        if(typeof responseData != 'string'){
+            return {};
+        }
+        return JSON.parse(responseData);
+    }
 }
 module.exports.responseService = new ResponseService();
 
@@ -155,6 +169,7 @@ module.exports.responseService = new ResponseService();
 class NetWorkService{
     constructor(){
         this.requestParamService = new RequestParamService();
+        this.responseService = new ResponseService();
 
         this.initAuthCallback = {};
         this._setUpNetwork();
@@ -186,10 +201,12 @@ class NetWorkService{
         console.log('init confifgure callback'+ this.initAuthCallback);
         // 3.发送数据
         this.netWorkInstance.sendData(data);
-        // 4.处理响应数据
+        // 4.处理响应数据，并回调
+        var self = this;
         this.netWorkInstance.websocket.onmessage = function(event){
             if(callback){
-                callback('interval callback '+ event.data);
+                var data = self.responseService.initAuthResponse(event.data);
+                callback(data);
             }
         }
 
