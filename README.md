@@ -1,2 +1,2 @@
-# hello-world
-Hello world new project template.
+# cocos2d-js 学习
+
