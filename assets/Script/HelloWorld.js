@@ -12,7 +12,6 @@ cc.Class({
 
     // use this for initialization
     onLoad: function () {
-        debugger;
         console.log('hhhahhahhhhhh');
         this.label.string = this.text;
         
@@ -25,7 +24,15 @@ cc.Class({
         // configure.fun1(1,2);
         // console.log('hhhhhhhh22222333334444');
 
+        var NetWork = require('NetWork');
+        var networkService = NetWork.netWorkService;
 
+        networkService.initConfigure('1','2','3',function(message){
+            console.log('network service '+ message);
+        });
+        // networkService.initConfigure2('1','2','3',function(message){
+        //     console.log('network service2 '+ message);
+        // });
     },
 
     configureWebSocket:function(){
