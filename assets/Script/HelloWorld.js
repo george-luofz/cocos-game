@@ -14,25 +14,42 @@ cc.Class({
     onLoad: function () {
         console.log('hhhahhahhhhhh');
         this.label.string = this.text;
-        
-        // var config = require('NetWork');
-        // console.log('console log spped is' + config.moveSpeed);
-        // cc.log('speed is' + config.moveSpeed);
-
-        // var configure = config.configureObj;
-        // console.log('property1='+configure.prop1);
-        // configure.fun1(1,2);
-        // console.log('hhhhhhhh22222333334444');
 
         var NetWork = require('NetWork');
         var networkService = NetWork.netWorkService;
 
-        networkService.initConfigure('1','2','3',function(message){
-            console.log('network service '+ message);
-        });
-        // networkService.initConfigure2('1','2','3',function(message){
-        //     console.log('network service2 '+ message);
+        // 1.请求初始化配置接口
+        // networkService.initConfigure('1','2','3',function(message){
+        //     console.log('network service init configure '+ message);
         // });
+
+        // // 2.响应数据
+        // networkService.observeStartGame(function(message){
+        //     console.log('network service start game '+message);
+        // });
+
+        // 3.提交答案
+        // networkService.commitAnswer(1,2,function(message){
+        //     console.log('network service commit answer '+message);
+        // });
+        
+        // 4. 监听答题完毕
+        // networkService.observerAnswerFinish(function(message){
+        //     console.log('network service observerAnswerFinish '+message);
+        // })
+
+        // 5.使用道具
+        networkService.useProp(1,2,function(message){
+            console.log('network service useProp '+message);
+        });
+        // 6. 上报倒计时结束
+        // networkService.timeOver('1',function(message){
+        //     console.log('network service timeOver '+message);
+        // });
+        // // 7. 游戏结束
+        networkService.observeGameOver(function(message){
+            console.log('network service game over '+message);
+        });
     },
 
     configureWebSocket:function(){
