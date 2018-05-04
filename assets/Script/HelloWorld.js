@@ -1,3 +1,5 @@
+import { networkInterfaces } from 'os';
+
 cc.Class({
     extends: cc.Component,
 
@@ -15,12 +17,15 @@ cc.Class({
         console.log('hhhahhahhhhhh');
         this.label.string = this.text;
 
-        var NetWork = require('NetWork');
-        var networkService = NetWork.netWorkService;
+        let NetWork = require('NetWorkManager');
+        let netWorkInstance = NetWork.netWorkInstance;
 
+        netWorkInstance.connetToServer();
+        // netWorkInstance.sendDataWithEventIdAndCallback
+        
         // 1.请求初始化配置接口
-        // networkService.initConfigure('1','2','3',function(message){
-        //     console.log('network service init configure '+ message);
+        // networkService.initConfigure('1','2','3',function(message,error){
+        //     console.log('network service init configure '+ message+' error = '+error);
         // });
 
         // // 2.响应数据
@@ -29,8 +34,8 @@ cc.Class({
         // });
 
         // 3.提交答案
-        // networkService.commitAnswer(1,2,function(message){
-        //     console.log('network service commit answer '+message);
+        // networkService.commitAnswer(1,2,function(message,error){
+        //     console.log('network service commit answer '+message+' error '+error);
         // });
         
         // 4. 监听答题完毕
@@ -39,17 +44,17 @@ cc.Class({
         // })
 
         // 5.使用道具
-        networkService.useProp(1,2,function(message){
-            console.log('network service useProp '+message);
-        });
+        // networkService.useProp(1,2,function(message,error){
+        //     console.log('network service useProp '+message+' error '+error);
+        // });
         // 6. 上报倒计时结束
-        // networkService.timeOver('1',function(message){
-        //     console.log('network service timeOver '+message);
+        // networkService.timeOver('1',function(message,error){
+        //     console.log('network service timeOver '+message+' error '+error);
         // });
         // // 7. 游戏结束
-        networkService.observeGameOver(function(message){
-            console.log('network service game over '+message);
-        });
+        // networkService.observeGameOver(function(message){
+        //     console.log('network service game over '+message);
+        // });
     },
 
     configureWebSocket:function(){

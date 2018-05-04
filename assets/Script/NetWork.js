@@ -1,14 +1,11 @@
-import { roots } from 'protobufjs';
 
-// import { networkInterfaces } from "os";
-// import { POINT_CONVERSION_HYBRID } from "constants";
 
 // 3. 网络模块
 // 支持监听任务
 // 支持发送请求
 
 
-let WEBSOCKETURL = 'ws://127.0.0.1:8085';
+let WEBSOCKETURL = 'ws://10.31.3.120:8085';
 // 定义事件
 const EVENT_AUTH = 'auth';
 const EVENT_GAME_START = 'game_start';
@@ -22,16 +19,23 @@ const EVENT_HEART_BEAT = 'heart_beat';
 let sendEvents = [EVENT_AUTH, EVENT_COMMIT_ANSWER, EVENT_USE_PROP, EVENT_TIME_OVER, EVENT_HEART_BEAT]; //客户端发送事件
 let observeEvents = [EVENT_GAME_START, EVENT_ANSWER_FINISH, EVENT_GAME_OVER]; // 服务端推送事件
 
-const Model = require('Model');
+const CONNECT_TIME_INTERVAL = 10; //默认建立连接超时时间
 
 class NetWorkManager{
     constructor(){
         this.instance = null;
         this.websocket = null;
 
-        this.serverMessageCallback = '';
-        // this._setupWebsocket();
-        
+        this.receiveDataCallback = {};
+        this.networkErrorCallback = {}; //网络异常callback
+
+        this._setupWebsocket();
+
+        this.conectTimeInverval = CONNECT_TIME_INTERVAL; //初始化使用默认值
+        this.waitForSendDataContainer = {}; //若send时，处于连接状态，则保存即将发送的数据，等待连接成功后发送
+
+        this.sendDataWithEventIdCallbacks = {}; //请求callback
+        this.observeEventIdCallbacks = {}; //响应callback
     }
 
     /**
@@ -43,24 +47,61 @@ class NetWorkManager{
         }
         return this.instance;
     }
-    
-    setupNetWork(){
-        this._setupWebsocket();
-    }
-
+    /**
+     * 连接服务器，如果超时时间内依然未连接，则断开连接
+     */
     connetToServer(){
-        //TODO:
+        // 如果连接已经打开或者连接中，则return
+        if(this.currentWebsocketState === WebSocket.OPEN || this.currentWebsocketState === WebSocket.CONNECTING){
+            return;
+        }
         this.websocket.connetToServer();
+        var self = this;
+        setTimeout(() => {
+            if(self.currentWebsocketState != WebSocket.OPEN){
+                self.closeConnection();
+            }
+        }, self.conectTimeInverval);
     }
-    
-    sendData(data){
-        // debugger
-        // if(this.websocket.readyState === WebSocket.CONNECTING){
-            this.websocket.send(data);
-        // }
+    /**
+     * 
+     * @param {*} evnetId 
+     * @param {*} data 
+     * @param {*} callback 
+     */
+    sendDataWithEventIdAndCallback(evnetId,data,callback){
+        var self = this;
+        self.sendDataWithEventIdCallbacks[eventId] = callback;
+        // 1.已连接
+        if(self.currentWebsocketState === WebSocket.OPEN){
+            self.websocket.send(data);
+        }else if(self.currentWebsocketState === WebSocket.CONNECTING){// 2. 连接中,等待
+            // 存储要发送的数据
+            self.waitForSendDataContainer[eventId] = data; //此处data用{}存更好一些
+        }else {// 如果已经关闭，则重新连接
+            self.connetToServer();
+            self.waitForSendDataContainer[eventId] = data;
+        }
     }
 
-      
+    observeEventIdWithCallback(eventId,callback){
+        
+        if(self.currentWebsocketState === WebSocket.OPEN){
+
+        }else if(self.currentWebsocketState === WebSocket.CONNECTING){// 2. 连接中,等待
+ 
+        }else{
+
+        }
+    }
+
+    /**
+     * 获取webSocket的当前状态
+     */
+    currentWebsocketState(){
+        return this.websocket.readyState;
+    }
+
    /**
     * 关闭socket连接
     */
@@ -68,45 +109,45 @@ class NetWorkManager{
         this.websocket.close();
     }
 
+    // 私有方法
+    /**
+     * 连接打开，处理要发送的数据
+     */ 
+    _onOpenHandler(){
+        console.log('websocket open');
+        if(this.waitForSendDataContainer.isEmpty()){ //如果有待发送数据
+            for (let key in this.waitForSendDataContainer){
+                let data = this.waitForSendDataContainer[key];
+                this.websocket.send(data);
+            }
+            // 发送完毕，清空元素
+            this.waitForSendDataContainer.clear();
+        }
+    }
+    _onMessageHandler(event){
+        console.log('websocket receive message '+JSON.stringify(event.data));
+    }
+    _onCloseHandler(){
+        console.log('websocket closed');
+    }
+    _onErrorHandler(error){
+        console.log('websocket error '+error.error);
+    }
 
-    /*
-    监听网络状态
-    */
-   observerNetworkState(callback){
-
-   }
     /**
      * 私有方法，设置webSocket
      */
-    // private 
     _setupWebsocket(){
         var websocket = new WebSocket(WEBSOCKETURL);
-        websocket.onopen = function (event) {
-            console.log("Send Text WS was opened.");
-        };
 
-        WebSocket.onmessage = this.serverMessageCallback;
-        // websocket.onmessage = function (event) {
-        //     console.log("response text msg: " + event.data);
-        //     console.log('on message server callback' +this.serverMessageCallback);
-        //     // todo
-        //     if(this.serverMessageCallback){
-        //         console.log('this message invoked');
-        //         this.serverMessageCallback(event.data);
-        //     }else{
-        //         console.log('server callback null');
-        //     }
-        // };
-
-        websocket.onerror = function (event) {
-            console.log("Send Text fired an error");
-        };
-        websocket.onclose = function (event) {
-            console.log("WebSocket instance closed.");
-        };
+        websocket.onmessage = this._onMessageHandler.bind(this);
+        websocket.onopen = this._onOpenHandler.bind(this);
+        websocket.onclose = this._onCloseHandler.bind(this);
+        websocket.onerror = this._onErrorHandler.bind(this);
 
         this.websocket = websocket;
     }
+    
     // 数组中是否包含某字符串
     _arrayHasObj(array,obj){
         var index = array.length; 
@@ -128,9 +169,6 @@ class NetWorkManager{
 }
 
 module.exports.netWorkInstance = NetWorkManager.getInstance();
-
-
-// 1. websocket 处理多个请求问题，请求数据跟响应数据如何标识
 
 /*
 * 2. 请求参数类
@@ -167,7 +205,7 @@ class RequestParamService{
         publicData['questionId'] = questionId;
         publicData['sencond'] = sencond;
         return this._buildParamWithData(publicData,EVENT_COMMIT_ANSWER);
-    }
+    }z
 
     /**
      * 使用道具请求参数
@@ -271,6 +309,21 @@ class ResponseService{
         return this._responseDataOfEvent(event,EVENT_GAME_OVER);
     }
 
+    /**
+     * 解析相应数据事件
+     * @param {*} responseData 
+     */
+    parseEventOfResponseData(responseData){
+        var jsonObj = this._parseResonseDataToJSON(responseData);
+        if(jsonObj){
+            return jsonObj['eventId'];
+        }
+        return null;
+    }
+
+    parseResponseJsonObjOfEvent(responseData,event){
+        return this._responseDataOfEvent(responseData,event);
+    }
     // -----
     // 私有方法
     /**
@@ -288,7 +341,7 @@ class ResponseService{
     }
     _parseResonseDataToJSON(responseData){
         if(typeof responseData != 'string'){
-            return {};
+            return null;
         }
         return JSON.parse(responseData);
     }
@@ -304,7 +357,6 @@ class NetWorkService{
         this.requestParamService = new RequestParamService();
         this.responseService = new ResponseService();
 
-        this.initAuthCallback = {};
         this._setUpNetwork();
         
         // 用容器，保存每个接口的callback,key是event，value是每个callback
@@ -314,7 +366,6 @@ class NetWorkService{
         this.openId = '';
         this.gameId = '';
         this.roomId = '';
-        
     }
     
     /**
@@ -338,22 +389,10 @@ class NetWorkService{
         this.roomId = roomId;
 
         // 2.保存callback
-        // this.callbackContainer[EVENT_AUTH] = callback;
+        this.callbackContainer[EVENT_AUTH] = callback;
 
         // 3.发送数据
-        this.netWorkInstance.sendData(data);
-        // 4.处理响应数据，并回调
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('init auth response succes');
-            console.log(event.data);
-            if(callback){
-                var respdata = self.responseService.initAuthResponse(event.data);
-                console.log('init auth callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
+        this.netWorkInstance.sendData(data,evnetId,callback);
     }
 
 
@@ -362,17 +401,7 @@ class NetWorkService{
      * @param {回调函数} callback 
      */
     observeStartGame(callback){
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('game start response succes');
-            console.log(event.data);
-            if(callback){
-                var respdata = self.responseService.startGameResponse(event.data);
-                console.log('game start callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
+        this.callbackContainer[EVENT_GAME_START] = callback;
     }
     
     /**
@@ -384,37 +413,15 @@ class NetWorkService{
     commitAnswer(questionId,sencond,callback){
         let data = this.requestParamService.buildCommitAnswerParam(questionId,sencond);
 
+        this.callbackContainer[EVENT_COMMIT_ANSWER] = callback;
         this.netWorkInstance.sendData(data);
-
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('commitAnswer response succes');
-            console.log(event.data);
-            
-            if(callback){
-                var respdata = self.responseService.commitAnswerResponse(event.data);
-                console.log('commitAnswer callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
     }
     /**
      * 监听服务端答题完毕回调
      * @param {响应回调} callback 
      */
     observerAnswerFinish(callback){
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('answer finish response succes');
-            console.log(event.data);
-            if(callback){
-                var respdata = self.responseService.observerAnswerFinishResponse(event.data);
-                console.log('answer finish callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
+        this.callbackContainer[EVENT_ANSWER_FINISH] = callback;
     }
     /**
      * 
@@ -427,18 +434,7 @@ class NetWorkService{
 
         this.netWorkInstance.sendData(data);
 
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('userProp response succes');
-            console.log(event.data);
-            
-            if(callback){
-                var respdata = self.responseService.userPropResponse(event.data);
-                console.log('userProp callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
+        this.callbackContainer[EVENT_USE_PROP] = callback;
     }   
 
     /**
@@ -448,21 +444,8 @@ class NetWorkService{
      */
     timeOver(questionId,callback){
         let data = this.requestParamService.buildTimeOverParam(questionId);
-
         this.netWorkInstance.sendData(data);
-
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('timeOver response succes');
-            console.log(event.data);
-            
-            if(callback){
-                var respdata = self.responseService.timeOverResponse(event.data);
-                console.log('timeOver callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
+        this.callbackContainer[EVENT_TIME_OVER] = callback;
     }
 
     /**
@@ -470,17 +453,7 @@ class NetWorkService{
      * @param {回调函数} callback 
      */
     observeGameOver(callback){
-        var self = this;
-        this.netWorkInstance.websocket.onmessage = function(event){
-            console.log('game over response succes');
-            console.log(event.data);
-            if(callback){
-                var respdata = self.responseService.observeGameOverResponse(event.data);
-                console.log('game over  callback');
-                console.log(respdata);
-                callback(respdata);
-            }
-        }
+        this.callbackContainer[EVENT_GAME_OVER] = callback;
     }
 
     /**
@@ -490,24 +463,24 @@ class NetWorkService{
         let netWorkInstance = NetWorkManager.getInstance();
         this.netWorkInstance = netWorkInstance;
 
-        // netWorkInstance.serverMessageCallback = this._onMessage;
-        netWorkInstance.setupNetWork(); //设置完callback，再配置webSocket，就有了callback
-
-        this.netWorkInstance.websocket.onmessage = this._onMessage; //将函数名赋值过来就可以
-    }
-    _onMessage(event){
-        console.log('new hell owoojidf '+event.data);
-        // 1. 解析event
-        // 2. 找到callback
-        // 3. 组装数据回调
-
-        console.log('init confifgure callback2'+ this.initAuthCallback);
-        if(this.initAuthCallback){
-            this.callbackContainer('the last call back data');
-        }else{
-            console.log('the last call back is null');
+        var self = this;
+        this.netWorkInstance.receiveDataCallback = function(event){
+            console.log('net work service receiveDataCallback invoked ' + event.data);
+            // 解析是哪个event，调用对应的callback
+            let eventId = self.responseService.parseEventOfResponseData(event.data);
+            console.log('eventId '+ eventId);
+            if(eventId){
+                let callback = self.callbackContainer[eventId];
+                console.log(eventId+' callback= '+callback);
+                if(callback){
+                    console.log(eventId + ' callback was invoked');
+                    let jsonObj = self.responseService.parseResponseJsonObjOfEvent(event.data,eventId);
+                    callback(jsonObj,null);
+                }
+            }
         }
     }
+
 }
 
 module.exports.netWorkService = new NetWorkService();
